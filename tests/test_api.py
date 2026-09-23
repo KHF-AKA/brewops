@@ -24,6 +24,7 @@ def db(tmp_path, monkeypatch):
 
 
 def test_stats(db):
+    """GET /api/stats returns totals/per-drink/per-day counts matching the seeded db."""
     r = request(app, "GET", "/api/stats")
     assert r.status == 200
     stats = r.json()
@@ -37,6 +38,8 @@ def test_stats(db):
 
 
 def test_machines_list_and_health(db):
+    """GET /api/machines lists the fleet; GET /api/machines/{id} returns its health,
+    including specialty when brews exist and None when they don't."""
     r = request(app, "GET", "/api/machines")
     assert r.status == 200
     assert len(r.json()) == 4
@@ -58,17 +61,20 @@ def test_machines_list_and_health(db):
 
 
 def test_machine_health_404(db):
+    """GET /api/machines/{id} 404s for a machine id that doesn't exist."""
     r = request(app, "GET", "/api/machines/999")
     assert r.status == 404
 
 
 def test_drink_types(db):
+    """GET /api/drink-types returns the seeded drink menu."""
     r = request(app, "GET", "/api/drink-types")
     assert r.status == 200
     assert {d["name"] for d in r.json()} >= {"espresso", "latte", "cappuccino"}
 
 
 def test_post_brew_ok_and_visible_in_stats(db):
+    """POST /api/brews inserts a manual brew that's immediately reflected in /api/stats."""
     r = request(app, "POST", "/api/brews", {
         "machine_id": 3,
         "drink_type": "lungo",
@@ -86,6 +92,7 @@ def test_post_brew_ok_and_visible_in_stats(db):
 
 
 def test_post_brew_accepts_html_form_timestamp(db):
+    """POST /api/brews accepts the HTML datetime-local format and normalizes it for storage."""
     r = request(app, "POST", "/api/brews", {
         "machine_id": 1,
         "drink_type": "espresso",
@@ -108,12 +115,15 @@ def test_post_brew_accepts_html_form_timestamp(db):
     ],
 )
 def test_post_brew_validation(db, payload, fragment):
+    """POST /api/brews returns 400 with a matching detail message for each invalid input:
+    unknown machine, unknown drink, future timestamp, unparsable timestamp."""
     r = request(app, "POST", "/api/brews", payload)
     assert r.status == 400
     assert fragment in r.json()["detail"]
 
 
 def test_post_maintenance(db):
+    """POST /api/maintenance logs a valid event and rejects an unknown maintenance type."""
     r = request(app, "POST", "/api/maintenance", {
         "machine_id": 2,
         "type": "descale",

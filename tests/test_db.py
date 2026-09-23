@@ -21,6 +21,7 @@ def conn(tmp_path):
 
 
 def test_init_is_idempotent(conn):
+    """Calling init_db twice must not duplicate seeded machines/drink types."""
     init_db(conn)
     init_db(conn)
     assert len(get_machines(conn)) == 4
@@ -28,6 +29,7 @@ def test_init_is_idempotent(conn):
 
 
 def test_reference_data_seeded(conn):
+    """The fixed fleet and drink menu are present after init, with correct fields."""
     machines = {m["name"]: m for m in get_machines(conn)}
     assert "Bertha (3rd floor)" in machines
     assert machines["Old Faithful (2nd floor)"]["has_telemetry"] is False
@@ -36,6 +38,7 @@ def test_reference_data_seeded(conn):
 
 
 def test_stats_math(conn):
+    """get_stats totals, per-drink counts, and per-day counts all match inserted brews."""
     insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.5, 92.0, "csv")
     insert_brew(conn, 1, "espresso", "2026-06-01 09:00:00", 26.0, 91.5, "csv")
     insert_brew(conn, 2, "latte", "2026-06-02 10:00:00", 44.0, 88.0, "csv")
@@ -53,6 +56,8 @@ def test_stats_math(conn):
 
 
 def test_machine_health(conn):
+    """get_machine_health bundles brew count, last brew, last maintenance,
+    recent errors, and specialty into one dict for a single machine."""
     insert_brew(conn, 4, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")
     insert_maintenance(conn, 4, "descale", "2026-06-03 18:00:00", note="quarterly descale")
     insert_maintenance(conn, 4, "error", "2026-06-04 09:15:00", error_code="E42")
@@ -72,15 +77,18 @@ def test_machine_health(conn):
 
 
 def test_machine_health_unknown_machine(conn):
+    """get_machine_health returns None for a machine id that doesn't exist."""
     assert get_machine_health(conn, 999) is None
 
 
 def test_machine_health_specialty_none_without_brews(conn):
+    """specialty is None when the machine has no brew_events rows yet."""
     health = get_machine_health(conn, 3)
     assert health["specialty"] is None
 
 
 def test_machine_health_specialty_picks_highest_count(conn):
+    """specialty is the drink type with the most brews for that machine."""
     insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")
     insert_brew(conn, 1, "espresso", "2026-06-01 09:00:00", 27.0, 92.0, "csv")
     insert_brew(conn, 1, "latte", "2026-06-01 10:00:00", 40.0, 88.0, "csv")
@@ -92,6 +100,7 @@ def test_machine_health_specialty_picks_highest_count(conn):
 
 
 def test_machine_health_specialty_tiebreak_by_most_recent(conn):
+    """When two drinks tie on count, specialty picks whichever was brewed most recently."""
     insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")
     insert_brew(conn, 1, "latte", "2026-06-02 08:00:00", 40.0, 88.0, "csv")
     conn.commit()
@@ -102,6 +111,7 @@ def test_machine_health_specialty_tiebreak_by_most_recent(conn):
 
 
 def test_reset_db_clears_events(conn):
+    """reset_db drops all brew/maintenance data but reseeds the machine/drink reference data."""
     insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")
     conn.commit()
     reset_db(conn)

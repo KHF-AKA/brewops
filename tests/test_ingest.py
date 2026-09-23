@@ -21,6 +21,7 @@ def conn(tmp_path):
 
 
 def test_happy_path_brews(conn, tmp_path):
+    """A well-formed brews_*.csv loads every row with source='csv'."""
     f = tmp_path / "brews_2026-06.csv"
     f.write_text(
         BREW_HEADER
@@ -36,6 +37,7 @@ def test_happy_path_brews(conn, tmp_path):
 
 
 def test_manual_file_gets_manual_source(conn, tmp_path):
+    """A manual_*.csv loads brews tagged source='manual', not 'csv'."""
     f = tmp_path / "manual_log_export.csv"
     f.write_text(BREW_HEADER + "3,lungo,2026-06-01 10:00:00,38.0,90.0\n", encoding="utf-8")
     report = ingest_path(conn, f, now=NOW)
@@ -45,6 +47,8 @@ def test_manual_file_gets_manual_source(conn, tmp_path):
 
 
 def test_malformed_rows_rejected_but_file_continues(conn, tmp_path):
+    """Each kind of bad row (unknown machine/drink, bad/future timestamp, bad numeric)
+    is rejected individually while the rest of the file still loads."""
     f = tmp_path / "brews_bad.csv"
     f.write_text(
         BREW_HEADER
@@ -67,6 +71,7 @@ def test_malformed_rows_rejected_but_file_continues(conn, tmp_path):
 
 
 def test_maintenance_file(conn, tmp_path):
+    """A maintenance_*.csv loads valid rows and rejects an unknown maintenance type."""
     f = tmp_path / "maintenance_2026-06.csv"
     f.write_text(
         MAINT_HEADER
@@ -86,6 +91,7 @@ def test_maintenance_file(conn, tmp_path):
 
 
 def test_unrecognized_filename_skipped(conn, tmp_path):
+    """A CSV not matching the brews_/manual_/maintenance_ naming convention is skipped entirely."""
     f = tmp_path / "notes.csv"
     f.write_text("whatever\n1\n", encoding="utf-8")
     report = ingest_path(conn, f, now=NOW)
@@ -94,6 +100,7 @@ def test_unrecognized_filename_skipped(conn, tmp_path):
 
 
 def test_directory_ingest_is_sorted_and_complete(conn, tmp_path):
+    """Ingesting a directory processes every recognized CSV in it, brews and maintenance alike."""
     (tmp_path / "brews_a.csv").write_text(
         BREW_HEADER + "1,espresso,2026-06-01 08:00:00,27.5,92.0\n", encoding="utf-8"
     )

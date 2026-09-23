@@ -26,6 +26,7 @@ def get_app():
 
 
 def test_index_served(db):
+    """GET / serves the dashboard HTML, including both the brew and maintenance forms."""
     r = request(get_app(), "GET", "/")
     assert r.status == 200
     assert "text/html" in r.headers.get("content-type", "")
@@ -34,6 +35,7 @@ def test_index_served(db):
 
 
 def test_static_assets_served(db):
+    """app.js and style.css are served as static files with their expected content."""
     js = request(get_app(), "GET", "/app.js")
     assert js.status == 200
     assert "loadDashboard" in js.text
@@ -43,6 +45,7 @@ def test_static_assets_served(db):
 
 
 def test_frontend_has_no_external_resources():
+    """No frontend file fetches an external http(s) resource — the app is fully self-contained."""
     # the SVG namespace is an identifier, not a fetched resource
     allowed = ("http://www.w3.org/2000/svg", "http://localhost")
     from brewops.api.main import FRONTEND_DIR
