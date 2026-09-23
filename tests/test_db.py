@@ -4,6 +4,7 @@ from brewops.db.connection import connect
 from brewops.db.queries import (
     get_drink_types,
     get_machine_health,
+    get_machine_usage_by_weekday,
     get_machines,
     get_stats,
     insert_brew,
@@ -74,6 +75,15 @@ def test_machine_health(conn):
         "count": 1,
         "last_brewed": "2026-06-01 08:00:00",
     }
+    assert health["usage_by_weekday"] == [
+        {"weekday": "Mon", "count": 1},
+        {"weekday": "Tue", "count": 0},
+        {"weekday": "Wed", "count": 0},
+        {"weekday": "Thu", "count": 0},
+        {"weekday": "Fri", "count": 0},
+        {"weekday": "Sat", "count": 0},
+        {"weekday": "Sun", "count": 0},
+    ]
 
 
 def test_machine_health_unknown_machine(conn):
@@ -108,6 +118,25 @@ def test_machine_health_specialty_tiebreak_by_most_recent(conn):
     health = get_machine_health(conn, 1)
     assert health["specialty"]["name"] == "latte"
     assert health["specialty"]["last_brewed"] == "2026-06-02 08:00:00"
+
+
+def test_machine_usage_by_weekday_zero_filled(conn):
+    """A machine with no brews gets all seven weekdays back with count 0, Monday-first."""
+    usage = get_machine_usage_by_weekday(conn, 2)
+    assert [u["weekday"] for u in usage] == ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    assert all(u["count"] == 0 for u in usage)
+
+
+def test_machine_usage_by_weekday_counts(conn):
+    """Brews are bucketed onto the correct day of week regardless of insertion order."""
+    insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")  # Monday
+    insert_brew(conn, 1, "espresso", "2026-06-01 18:00:00", 27.0, 92.0, "csv")  # Monday
+    insert_brew(conn, 1, "latte", "2026-06-03 09:00:00", 40.0, 88.0, "csv")  # Wednesday
+    insert_brew(conn, 1, "lungo", "2026-06-07 09:00:00", 38.0, 90.0, "csv")  # Sunday
+    conn.commit()
+
+    usage = {u["weekday"]: u["count"] for u in get_machine_usage_by_weekday(conn, 1)}
+    assert usage == {"Mon": 2, "Tue": 0, "Wed": 1, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 1}
 
 
 def test_reset_db_clears_events(conn):

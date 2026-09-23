@@ -94,6 +94,29 @@ def get_stats(conn: sqlite3.Connection) -> dict[str, Any]:
     return {"total_brews": total, "per_drink": per_drink, "per_day": per_day}
 
 
+WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+# SQLite strftime('%w', ...) is 0=Sunday..6=Saturday; reorder to Monday-first.
+_WEEKDAY_SQLITE_ORDER = [1, 2, 3, 4, 5, 6, 0]
+
+
+def get_machine_usage_by_weekday(conn: sqlite3.Connection, machine_id: int) -> list[dict[str, Any]]:
+    """Brew counts by day of week (Monday-first), zero-filled, for the load histogram."""
+    rows = conn.execute(
+        """
+        SELECT CAST(strftime('%w', timestamp) AS INTEGER) AS dow, COUNT(*) AS count
+        FROM brew_events
+        WHERE machine_id = ?
+        GROUP BY dow
+        """,
+        (machine_id,),
+    )
+    counts = {r["dow"]: r["count"] for r in rows}
+    return [
+        {"weekday": WEEKDAY_LABELS[i], "count": counts.get(dow, 0)}
+        for i, dow in enumerate(_WEEKDAY_SQLITE_ORDER)
+    ]
+
+
 def get_machine_health(conn: sqlite3.Connection, machine_id: int) -> dict[str, Any] | None:
     """Machine card: brew activity plus maintenance history."""
     machine = get_machine(conn, machine_id)
@@ -145,4 +168,5 @@ def get_machine_health(conn: sqlite3.Connection, machine_id: int) -> dict[str, A
         "last_maintenance": dict(last_maintenance) if last_maintenance else None,
         "recent_errors": recent_errors,
         "specialty": dict(specialty) if specialty else None,
+        "usage_by_weekday": get_machine_usage_by_weekday(conn, machine_id),
     }

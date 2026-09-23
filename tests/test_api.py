@@ -55,9 +55,13 @@ def test_machines_list_and_health(db):
         "count": 2,
         "last_brewed": "2026-06-01 09:00:00",
     }
+    usage = {u["weekday"]: u["count"] for u in health["usage_by_weekday"]}
+    assert usage == {"Mon": 2, "Tue": 0, "Wed": 0, "Thu": 0, "Fri": 0, "Sat": 0, "Sun": 0}
 
     r = request(app, "GET", "/api/machines/3")
-    assert r.json()["specialty"] is None
+    body = r.json()
+    assert body["specialty"] is None
+    assert all(u["count"] == 0 for u in body["usage_by_weekday"])
 
 
 def test_machine_health_404(db):

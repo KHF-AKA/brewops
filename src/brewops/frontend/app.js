@@ -49,6 +49,32 @@ function renderTimeline(perDay) {
   });
 }
 
+function renderUsageHistogram(usageByWeekday, machineName) {
+  const width = 182;
+  const barsHeight = 36;
+  const height = 54;
+  const slotWidth = width / usageByWeekday.length;
+  const barWidth = Math.max(0.5, slotWidth - 6);
+  const max = Math.max(1, ...usageByWeekday.map((d) => d.count));
+  const bars = usageByWeekday
+    .map((d, i) => {
+      const barHeight = Math.max(2, (d.count / max) * barsHeight);
+      const x = i * slotWidth + (slotWidth - barWidth) / 2;
+      const y = barsHeight - barHeight;
+      const labelX = i * slotWidth + slotWidth / 2;
+      const brewWord = d.count === 1 ? "brew" : "brews";
+      return `
+        <rect class="timeline-bar" x="${x}" y="${y}" width="${barWidth}" height="${barHeight}">
+          <title>${d.weekday}: ${d.count} ${brewWord}</title>
+        </rect>
+        <text class="usage-label" x="${labelX}" y="${height - 2}" text-anchor="middle">${d.weekday[0]}</text>`;
+    })
+    .join("");
+  return `
+    <svg class="usage-histogram" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"
+         role="img" aria-label="Brews by day of week for ${machineName}">${bars}</svg>`;
+}
+
 function renderMachineCards(healths) {
   const container = document.getElementById("machine-cards");
   container.innerHTML = "";
@@ -70,7 +96,9 @@ function renderMachineCards(healths) {
       <p>${m.brew_count} brews · last ${m.last_brew ? m.last_brew.slice(0, 16) : "never"}</p>
       <p>Specialty: ${specialty}</p>
       <p>Last maintenance: ${maintenance}</p>
-      ${errors}`;
+      ${errors}
+      <p class="usage-caption">Load by weekday</p>
+      ${renderUsageHistogram(m.usage_by_weekday, m.name)}`;
     container.appendChild(card);
   }
 }
