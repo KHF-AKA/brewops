@@ -9,6 +9,17 @@ SQLite, and a dashboard shows consumption stats and machine health.
 This repo is the hands-on codebase for an agentic-coding workshop. There is nothing
 secret in here — no credentials, no real data, no hidden answers. The coffee is fictional.
 
+## Tech stack
+
+- **Backend:** Python 3.11+, [FastAPI](https://fastapi.tiangolo.com/) + Uvicorn
+- **Data:** SQLite, no ORM — hand-written SQL in `src/brewops/db/queries.py`
+- **Frontend:** plain HTML/CSS/JS, no framework, no build step
+- **Tests:** pytest, driving the ASGI app directly (no `httpx`/`starlette.testclient`)
+- **Package/task runner:** [uv](https://docs.astral.sh/uv/)
+
+One process, one port (8123): FastAPI serves the JSON API and the static frontend
+together. See [docs/architecture.md](docs/architecture.md) for the full request flow.
+
 ## Requirements
 
 - Python 3.11 or newer
@@ -57,3 +68,20 @@ tests/                  pytest suite
 tickets/                open tickets, in markdown
 data/inbox/             sample CSV event logs (~3 months)
 ```
+
+## API
+
+`GET /api/stats`, `GET /api/machines`, `GET /api/machines/{id}`,
+`GET /api/drink-types`, `POST /api/brews`, `POST /api/maintenance`. The
+dashboard endpoints (`/api/stats`, `/api/machines/{id}`) accept optional
+`start`/`end` date-range query params. Full request/response shapes are in
+[docs/reference/api.md](docs/reference/api.md).
+
+## Docs
+
+- [docs/architecture.md](docs/architecture.md) — layers, request flow, how the pieces connect
+- [docs/ingestion.md](docs/ingestion.md) — CSV inbox vs. manual UI entry, file/validation rules
+- [docs/testing.md](docs/testing.md) — running the app, running/writing tests
+- [docs/conventions.md](docs/conventions.md) — timestamps, drink_type key, where SQL lives, the health-aggregate pattern
+- [docs/reference/schema.md](docs/reference/schema.md) — tables, columns, seeded reference data
+- [docs/reference/api.md](docs/reference/api.md) — every endpoint, request/response shapes
