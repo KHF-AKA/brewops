@@ -1,7 +1,0 @@
-machine_id,drink,timestamp,duration_s,temp_c
-99,espresso,2026-06-01 08:00:00,27.5,92.0
-1,unicorn_frappe,2026-06-01 08:05:00,27.5,92.0
-1,espresso,junk,27.5,92.0
-1,espresso,2027-01-01 08:00:00,27.5,92.0
-1,espresso,2026-06-01 08:10:00,zero,92.0
-1,espresso,2026-06-01 08:15:00,27.5,92.0
