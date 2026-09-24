@@ -44,6 +44,10 @@ Then open <http://localhost:8123>.
 - `uv run ingest <path>` — ingests additional CSV files
 - `uv run pytest` — runs the test suite
 
+For an unattended, visitor-facing screen (e.g. reception), open
+`http://localhost:8123/?kiosk=1` — this hides the "Log a brew" / "Log
+maintenance" forms so passersby can't submit data from the kiosk.
+
 ## Workshop scripts
 
 - `uv run scripts/setup_check.py` — verifies your setup and prints your completion code (pre-work)

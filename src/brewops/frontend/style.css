@@ -348,7 +348,7 @@ main {
   color: var(--ink-soft);
 }
 
-.card p:not(.badge):not(.errors) strong,
+.card p:not(.badge) strong,
 .card b {
   color: var(--ink);
 }
@@ -482,6 +482,11 @@ main {
 
 ::selection {
   background: rgb(185 129 47 / 0.25);
+}
+
+/* ---- kiosk mode: unattended reception screen, no data-entry ---- */
+body.kiosk .form-panel {
+  display: none;
 }
 
 /* tablet & below: collapse the bento to a single column */
