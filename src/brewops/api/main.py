@@ -2,11 +2,11 @@
 
 import sqlite3
 from contextlib import asynccontextmanager, closing
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -54,6 +54,25 @@ def parse_timestamp(value: str) -> str:
     return ts.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def parse_date_range(start: str | None, end: str | None) -> tuple[str | None, str | None]:
+    """Convert YYYY-MM-DD date strings to half-open range bounds for SQL queries."""
+    start_bound = None
+    if start is not None:
+        try:
+            start_bound = date.fromisoformat(start).strftime("%Y-%m-%d 00:00:00")
+        except ValueError:
+            raise HTTPException(400, f"unparsable start date {start!r}")
+    end_bound = None
+    if end is not None:
+        try:
+            end_bound = (date.fromisoformat(end) + timedelta(days=1)).strftime("%Y-%m-%d 00:00:00")
+        except ValueError:
+            raise HTTPException(400, f"unparsable end date {end!r}")
+    if start_bound and end_bound and start_bound >= end_bound:
+        raise HTTPException(400, "start date must be before end date")
+    return start_bound, end_bound
+
+
 class BrewIn(BaseModel):
     machine_id: int
     drink_type: str
@@ -71,8 +90,13 @@ class MaintenanceIn(BaseModel):
 
 
 @app.get("/api/stats")
-def stats(conn: sqlite3.Connection = Depends(get_db)):
-    return queries.get_stats(conn)
+def stats(
+    start: str | None = Query(default=None),
+    end: str | None = Query(default=None),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    start_bound, end_bound = parse_date_range(start, end)
+    return queries.get_stats(conn, start_bound, end_bound)
 
 
 @app.get("/api/machines")
@@ -81,8 +105,14 @@ def machines(conn: sqlite3.Connection = Depends(get_db)):
 
 
 @app.get("/api/machines/{machine_id}")
-def machine_health(machine_id: int, conn: sqlite3.Connection = Depends(get_db)):
-    health = queries.get_machine_health(conn, machine_id)
+def machine_health(
+    machine_id: int,
+    start: str | None = Query(default=None),
+    end: str | None = Query(default=None),
+    conn: sqlite3.Connection = Depends(get_db),
+):
+    start_bound, end_bound = parse_date_range(start, end)
+    health = queries.get_machine_health(conn, machine_id, start_bound, end_bound)
     if health is None:
         raise HTTPException(404, f"no machine with id {machine_id}")
     return health

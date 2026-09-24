@@ -141,3 +141,50 @@ def test_post_maintenance(db):
         "timestamp": "2026-06-06 09:00:00",
     })
     assert r.status == 400
+
+
+def test_stats_with_date_range(db):
+    """GET /api/stats with start/end query params filters results by date."""
+    r = request(app, "GET", "/api/stats?start=2026-06-01&end=2026-06-01")
+    assert r.status == 200
+    stats = r.json()
+    assert stats["total_brews"] == 2
+    assert {d["day"]: d["count"] for d in stats["per_day"]} == {"2026-06-01": 2}
+
+
+def test_stats_with_one_sided_range(db):
+    """GET /api/stats works with only start or only end."""
+    r = request(app, "GET", "/api/stats?start=2026-06-02")
+    assert r.status == 200
+    assert r.json()["total_brews"] == 1
+
+    r = request(app, "GET", "/api/stats?end=2026-06-01")
+    assert r.status == 200
+    assert r.json()["total_brews"] == 2
+
+
+def test_stats_date_range_validation(db):
+    """GET /api/stats returns 400 for malformed dates or start after end."""
+    r = request(app, "GET", "/api/stats?start=not-a-date")
+    assert r.status == 400
+    assert "unparsable" in r.json()["detail"]
+
+    r = request(app, "GET", "/api/stats?start=2026-06-02&end=2026-06-01")
+    assert r.status == 400
+    assert "start date must be before end date" in r.json()["detail"]
+
+
+def test_machine_health_with_date_range(db):
+    """GET /api/machines/{id} with start/end filters health by date."""
+    r = request(app, "GET", "/api/machines/1?start=2026-06-01&end=2026-06-01")
+    assert r.status == 200
+    health = r.json()
+    assert health["brew_count"] == 2
+    assert health["specialty"]["name"] == "espresso"
+
+
+def test_machines_list_ignores_date_range(db):
+    """GET /api/machines does not accept start/end params (no time-scoped data)."""
+    r = request(app, "GET", "/api/machines?start=2026-06-01")
+    assert r.status == 200
+    assert len(r.json()) == 4

@@ -103,18 +103,54 @@ function renderMachineCards(healths) {
   }
 }
 
+function rangeQS() {
+  const start = document.getElementById("dash-start").value;
+  const end = document.getElementById("dash-end").value;
+  const params = new URLSearchParams();
+  if (start) params.set("start", start);
+  if (end) params.set("end", end);
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
 async function loadDashboard() {
-  const stats = await fetchJSON("/api/stats");
+  const qs = rangeQS();
+  const stats = await fetchJSON(`/api/stats${qs}`);
   document.getElementById("total-brews").textContent = stats.total_brews;
   const lastDay = stats.per_day[stats.per_day.length - 1];
   document.getElementById("brews-today").textContent = lastDay ? lastDay.count : 0;
+
+  const label = document.getElementById("brews-today-label");
+  if (qs) {
+    label.textContent = "Last day in range";
+  } else {
+    label.textContent = "brews on last active day";
+  }
+
   renderDrinkBars(stats.per_drink);
   renderTimeline(stats.per_day);
 
   const machines = await fetchJSON("/api/machines");
   document.getElementById("machine-count").textContent = machines.length;
-  const healths = await Promise.all(machines.map((m) => fetchJSON(`/api/machines/${m.id}`)));
+  const healths = await Promise.all(machines.map((m) => fetchJSON(`/api/machines/${m.id}${qs}`)));
   renderMachineCards(healths);
+}
+
+function initRangeFromURL() {
+  const params = new URLSearchParams(location.search);
+  const start = params.get("start");
+  const end = params.get("end");
+  if (start) document.getElementById("dash-start").value = start;
+  if (end) document.getElementById("dash-end").value = end;
+}
+
+function onRangeChange() {
+  const qs = rangeQS();
+  const url = qs ? `?${qs}` : location.pathname;
+  history.replaceState(null, "", url);
+  loadDashboard().catch((error) => {
+    console.error("Dashboard reload failed:", error);
+  });
 }
 
 // ---- forms ----
@@ -181,6 +217,15 @@ async function submitForm(event, url, messageId, buildPayload) {
     message.classList.add("error");
   }
 }
+
+initRangeFromURL();
+document.getElementById("dash-start").addEventListener("change", onRangeChange);
+document.getElementById("dash-end").addEventListener("change", onRangeChange);
+document.getElementById("dash-clear").addEventListener("click", () => {
+  document.getElementById("dash-start").value = "";
+  document.getElementById("dash-end").value = "";
+  onRangeChange();
+});
 
 loadDashboard().catch((error) => {
   document.getElementById("total-brews").textContent = "!";

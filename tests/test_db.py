@@ -146,3 +146,100 @@ def test_reset_db_clears_events(conn):
     reset_db(conn)
     assert get_stats(conn)["total_brews"] == 0
     assert len(get_machines(conn)) == 4
+
+
+def test_get_stats_no_range_returns_all_time(conn):
+    """With no range parameters, get_stats returns the same as before (all-time view)."""
+    insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")
+    insert_brew(conn, 1, "espresso", "2026-06-15 09:00:00", 26.0, 91.5, "csv")
+    insert_brew(conn, 2, "latte", "2026-07-02 10:00:00", 44.0, 88.0, "csv")
+    conn.commit()
+
+    stats = get_stats(conn)
+    assert stats["total_brews"] == 3
+    assert {d["name"]: d["count"] for d in stats["per_drink"]}["espresso"] == 2
+
+
+def test_get_stats_with_range(conn):
+    """get_stats filters by date range: inclusive on both ends."""
+    insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")
+    insert_brew(conn, 1, "espresso", "2026-06-15 09:00:00", 26.0, 91.5, "csv")
+    insert_brew(conn, 2, "latte", "2026-07-02 10:00:00", 44.0, 88.0, "csv")
+    conn.commit()
+
+    stats = get_stats(conn, "2026-06-01 00:00:00", "2026-06-30 00:00:00")
+    assert stats["total_brews"] == 2
+    assert {d["day"]: d["count"] for d in stats["per_day"]} == {"2026-06-01": 1, "2026-06-15": 1}
+
+
+def test_get_stats_one_sided_range(conn):
+    """get_stats works with only start or only end."""
+    insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")
+    insert_brew(conn, 1, "espresso", "2026-06-15 09:00:00", 26.0, 91.5, "csv")
+    insert_brew(conn, 2, "latte", "2026-07-02 10:00:00", 44.0, 88.0, "csv")
+    conn.commit()
+
+    only_start = get_stats(conn, "2026-06-15 00:00:00", None)
+    assert only_start["total_brews"] == 2
+
+    only_end = get_stats(conn, None, "2026-06-30 00:00:00")
+    assert only_end["total_brews"] == 2
+
+
+def test_get_stats_empty_range(conn):
+    """get_stats with an empty range returns zero totals and zero-filled per_drink."""
+    insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")
+    insert_brew(conn, 2, "latte", "2026-06-02 10:00:00", 44.0, 88.0, "csv")
+    conn.commit()
+
+    stats = get_stats(conn, "2026-05-01 00:00:00", "2026-05-30 00:00:00")
+    assert stats["total_brews"] == 0
+    assert stats["per_day"] == []
+    per_drink = {d["name"]: d["count"] for d in stats["per_drink"]}
+    assert per_drink["espresso"] == 0
+    assert per_drink["latte"] == 0
+    assert per_drink["cappuccino"] == 0
+
+
+def test_get_stats_preserves_zero_count_drinks_in_range(conn):
+    """per_drink includes drinks with zero brews in the range (LEFT JOIN behavior)."""
+    insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")
+    insert_brew(conn, 2, "latte", "2026-06-02 10:00:00", 44.0, 88.0, "csv")
+    conn.commit()
+
+    stats = get_stats(conn, "2026-06-01 00:00:00", "2026-06-02 00:00:00")
+    per_drink = {d["name"]: d["count"] for d in stats["per_drink"]}
+    assert per_drink["espresso"] == 1
+    assert per_drink["latte"] == 0
+    assert per_drink["cappuccino"] == 0
+
+
+def test_get_machine_health_with_range(conn):
+    """get_machine_health filters all stats by date range."""
+    insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")
+    insert_brew(conn, 1, "espresso", "2026-07-15 09:00:00", 26.0, 91.5, "csv")
+    insert_maintenance(conn, 1, "descale", "2026-06-03 18:00:00")
+    insert_maintenance(conn, 1, "error", "2026-07-04 09:15:00", error_code="E42")
+    conn.commit()
+
+    health = get_machine_health(conn, 1, "2026-06-01 00:00:00", "2026-06-30 00:00:00")
+    assert health["brew_count"] == 1
+    assert health["last_brew"] == "2026-06-01 08:00:00"
+    assert health["last_maintenance"]["type"] == "descale"
+    assert len(health["recent_errors"]) == 0
+    assert health["specialty"]["name"] == "espresso"
+
+
+def test_get_machine_health_empty_range(conn):
+    """get_machine_health in an empty range returns zero counts and None values."""
+    insert_brew(conn, 1, "espresso", "2026-06-01 08:00:00", 27.0, 92.0, "csv")
+    insert_maintenance(conn, 1, "descale", "2026-06-03 18:00:00")
+    conn.commit()
+
+    health = get_machine_health(conn, 1, "2026-05-01 00:00:00", "2026-05-30 00:00:00")
+    assert health["brew_count"] == 0
+    assert health["last_brew"] is None
+    assert health["last_maintenance"] is None
+    assert health["recent_errors"] == []
+    assert health["specialty"] is None
+    assert all(u["count"] == 0 for u in health["usage_by_weekday"])

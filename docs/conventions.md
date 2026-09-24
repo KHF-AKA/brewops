@@ -16,6 +16,12 @@
   several queries in `get_machine_health`. This is the shape the frontend's
   machine cards consume directly, so a new per-machine stat belongs there,
   not a new endpoint. See [architecture.md](architecture.md).
+- **Date-range filtering on time-scoped stats.** `GET /api/stats` and `GET
+  /api/machines/{id}` both accept optional `start` and `end` query parameters
+  in `YYYY-MM-DD` format (inclusive on both ends). Use `_range_clause` helper
+  in `queries.py` to build the SQL fragment, and `parse_date_range` in
+  `api/main.py` to parse and validate the dates. When adding a new per-machine
+  or per-system stat, apply the same range if it's time-dependent.
 - **`$BREWOPS_DB`** overrides the SQLite file path (used by tests to point at
   a temp file); defaults to `./brewops.db`.
 - **No frontend build step, no framework, no external resources** — plain

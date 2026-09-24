@@ -3,7 +3,14 @@
 All endpoints are defined in `src/brewops/api/main.py`. JSON in, JSON out.
 
 ## `GET /api/stats`
-Dashboard numbers. Returns:
+Dashboard numbers. Optional query params: `start` and `end` in `YYYY-MM-DD` format
+for a date range (both inclusive). If neither is given, returns all-time data. Both
+are optional independently (e.g., `?start=2026-06-01` for "from this date onward").
+Returns 400 if dates are malformed or if `start` is after `end`.
+
+Example: `GET /api/stats?start=2026-06-01&end=2026-06-30` filters to June 2026.
+
+Response:
 ```json
 {
   "total_brews": 2581,
@@ -16,8 +23,12 @@ Dashboard numbers. Returns:
 Returns the fleet: `[{"id", "name", "floor", "has_telemetry"}, ...]`.
 
 ## `GET /api/machines/{machine_id}`
-The machine health card. 404 if the id doesn't exist. Returns machine fields
-plus:
+The machine health card. Optional query params: `start` and `end` in `YYYY-MM-DD`
+format for a date range (both inclusive). If neither is given, returns all-time data.
+Returns 400 if dates are malformed or if `start` is after `end`. Returns 404 if the
+machine id doesn't exist.
+
+Returns machine fields plus:
 ```json
 {
   "brew_count": 2581,
