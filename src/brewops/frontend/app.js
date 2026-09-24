@@ -81,22 +81,12 @@ function renderMachineCards(healths) {
   for (const m of healths) {
     const card = document.createElement("div");
     card.className = "card";
-    const maintenance = m.last_maintenance
-      ? `${m.last_maintenance.type} on ${m.last_maintenance.timestamp.slice(0, 10)}`
-      : "none on record";
-    const errors = m.recent_errors.length
-      ? `<p class="errors">Recent errors: ${m.recent_errors
-          .map((e) => `${e.error_code || "?"} (${e.timestamp.slice(0, 10)})`)
-          .join(", ")}</p>`
-      : "";
     const specialty = m.specialty ? `${m.specialty.label} (${m.specialty.count})` : "no brews yet";
     card.innerHTML = `
       <h3>${m.name}</h3>
       <p class="badge">${m.has_telemetry ? "telemetry" : "manual log"}</p>
       <p>${m.brew_count} brews · last ${m.last_brew ? m.last_brew.slice(0, 16) : "never"}</p>
       <p>Specialty: ${specialty}</p>
-      <p>Last maintenance: ${maintenance}</p>
-      ${errors}
       <p class="usage-caption">Load by weekday</p>
       ${renderUsageHistogram(m.usage_by_weekday, m.name)}`;
     container.appendChild(card);
