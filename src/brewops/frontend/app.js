@@ -128,9 +128,9 @@ async function loadDashboard() {
 
 function initKioskMode() {
   const params = new URLSearchParams(location.search);
-  if (params.has("kiosk")) {
-    document.body.classList.add("kiosk");
-  }
+  const isKiosk = params.has("kiosk");
+  document.body.classList.toggle("kiosk", isKiosk);
+  return isKiosk;
 }
 
 function initRangeFromURL() {
@@ -215,7 +215,7 @@ async function submitForm(event, url, messageId, buildPayload) {
   }
 }
 
-initKioskMode();
+const isKiosk = initKioskMode();
 initRangeFromURL();
 document.getElementById("dash-start").addEventListener("change", onRangeChange);
 document.getElementById("dash-end").addEventListener("change", onRangeChange);
@@ -229,6 +229,6 @@ loadDashboard().catch((error) => {
   document.getElementById("total-brews").textContent = "!";
   console.error("Dashboard failed to load:", error);
 });
-if (!document.body.classList.contains("kiosk")) {
+if (!isKiosk) {
   setupForms().catch((error) => console.error("Form setup failed:", error));
 }
