@@ -14,3 +14,7 @@ Read the relevant doc before working in that area — don't guess.
 - [docs/conventions.md](docs/conventions.md) — timestamps, drink_type key, where SQL lives, the health-aggregate pattern
 - [docs/reference/schema.md](docs/reference/schema.md) — tables, columns, seeded reference data
 - [docs/reference/api.md](docs/reference/api.md) — every endpoint, request/response shapes
+
+## Git commits
+
+Do not add Co-Authored-By or "Generated with Claude Code" attribution lines to commits or PRs.
